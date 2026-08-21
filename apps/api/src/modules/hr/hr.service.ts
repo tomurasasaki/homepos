@@ -79,8 +79,8 @@ export class HrService {
     const employees = await this.getEmployees(tenantId);
 
     // Simulate payroll calculations & queue logs
-    const payrollSummary = employees.map(emp => {
-      const workingDays = emp.attendances.filter(a => a.check_out !== null).length;
+    const payrollSummary = employees.map((emp: any) => {
+      const workingDays = emp.attendances.filter((a: any) => a.check_out !== null).length;
       const baseSalary = Number(emp.salary);
       const calculatedPay = workingDays > 0 ? (baseSalary / 22) * workingDays : baseSalary; // standard 22 working days
       return {
@@ -91,7 +91,7 @@ export class HrService {
     });
 
     // Write simple journal record for expenses
-    const totalExpense = payrollSummary.reduce((sum, item) => sum + item.calculatedPay, 0);
+    const totalExpense = payrollSummary.reduce((sum: number, item: any) => sum + item.calculatedPay, 0);
     await this.prisma.journal.create({
       data: {
         tenant_id: tenantId,

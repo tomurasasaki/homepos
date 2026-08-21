@@ -34,7 +34,7 @@ export class AuthService {
     const password_hash = await bcrypt.hash(dto.password, salt);
 
     // Transaction to create Tenant, Store, Branch, and User
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: any) => {
       const tenant = await tx.tenant.create({
         data: {
           name: dto.tenant_name,

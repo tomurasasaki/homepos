@@ -55,13 +55,13 @@ export class CashReportService {
 
     const startCash = Number(shift.start_cash);
     const totalTransactions = shift.txs
-      .filter((t) => t.status === 'PAID')
-      .reduce((sum, t) => sum + Number(t.total), 0);
+      .filter((t: any) => t.status === 'PAID')
+      .reduce((sum: number, t: any) => sum + Number(t.total), 0);
 
     const expectedCash = startCash + totalTransactions;
     const difference = dto.actual_cash - expectedCash;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const closedShift = await tx.shift.update({
         where: { id: shift.id },
         data: {

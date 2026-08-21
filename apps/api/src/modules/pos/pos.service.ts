@@ -21,8 +21,8 @@ export class PosService {
       orderBy: { name: 'asc' },
     });
 
-    return products.map((p) => {
-      const stockVal = p.stocks.reduce((acc, s) => acc + s.quantity, 0);
+    return products.map((p: any) => {
+      const stockVal = p.stocks.reduce((acc: number, s: any) => acc + s.quantity, 0);
       return {
         ...p,
         price: Number(p.price),
@@ -73,7 +73,7 @@ export class PosService {
       throw new BadRequestException('Active shift not found. Please open shift first.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       let subtotal = 0;
       const itemsToCreate = [];
 

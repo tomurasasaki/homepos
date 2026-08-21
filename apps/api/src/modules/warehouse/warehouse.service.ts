@@ -71,7 +71,7 @@ export class WarehouseService {
       throw new BadRequestException('Insufficient stock in origin branch');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       // Deduct from source branch
       await tx.stock.update({
         where: {

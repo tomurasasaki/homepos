@@ -93,7 +93,7 @@ export class SetupService {
     const salt = await bcrypt.genSalt(12);
     const password_hash = await bcrypt.hash(dto.admin_password, salt);
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: any) => {
       const subdomain = dto.store_name.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'default-store';
 
       const tenant = await tx.tenant.create({

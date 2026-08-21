@@ -1,0 +1,336 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id         String   @id @default(uuid())
+  name       String
+  subdomain  String   @unique
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users         User[]
+  stores        Store[]
+  audit_events  AuditEvent[]
+  members       Member[]
+  shifts        Shift[]
+  journals      Journal[]
+  vouchers      Voucher[]
+  categories    Category[]
+  products      Product[]
+  stock_transfers StockTransfer[]
+
+  @@map("tenants")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  email         String   @unique
+  password_hash String
+  name          String
+  role          String   @default("KASIR")
+  branch_id     String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  branch        Branch?  @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  shifts        Shift[]
+  audit_events  AuditEvent[]
+
+  @@index([tenant_id])
+  @@map("users")
+}
+
+model Store {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  address    String?
+  phone      String?
+  email      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  branches   Branch[]
+
+  @@index([tenant_id])
+  @@map("stores")
+}
+
+model Branch {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  store_id   String
+  name       String
+  address    String?
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  store      Store    @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  users      User[]
+  products   ProductBranch[]
+  shifts     Shift[]
+  stocks     Stock[]
+  transactions Transaction[]
+  from_transfers StockTransfer[] @relation("FromBranch")
+  to_transfers   StockTransfer[] @relation("ToBranch")
+
+  @@index([tenant_id])
+  @@map("branches")
+}
+
+model Category {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  products   Product[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  category_id String?
+  sku         String
+  name        String
+  price       Float
+  cost_price  Float
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  branches    ProductBranch[]
+  stocks      Stock[]
+  tx_items    TransactionItem[]
+  transfers   StockTransfer[]
+
+  @@unique([tenant_id, sku])
+  @@index([tenant_id])
+  @@map("products")
+}
+
+model ProductBranch {
+  product_id String
+  branch_id  String
+  is_active  Boolean  @default(true)
+
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  branch     Branch   @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@id([product_id, branch_id])
+  @@map("product_branches")
+}
+
+model Stock {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  product_id String
+  branch_id  String
+  quantity   Int      @default(0)
+  updated_at DateTime @updatedAt
+
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  branch     Branch   @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([branch_id, product_id])
+  @@index([tenant_id])
+  @@map("stocks")
+}
+
+model Member {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  phone      String
+  name       String
+  points     Int      @default(0)
+  tier       String   @default("Bronze")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  txs        Transaction[]
+
+  @@unique([tenant_id, phone])
+  @@index([tenant_id])
+  @@map("members")
+}
+
+model Transaction {
+  id             String            @id @default(uuid())
+  tenant_id      String
+  branch_id      String
+  member_id      String?
+  shift_id       String
+  subtotal       Float
+  tax            Float             @default(0)
+  discount       Float             @default(0)
+  total          Float
+  paid_amount    Float
+  change         Float
+  payment_method String            @default("CASH")
+  status         String            @default("PAID")
+  created_at     DateTime          @default(now())
+
+  branch      Branch            @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  member      Member?           @relation(fields: [member_id], references: [id], onDelete: SetNull)
+  shift       Shift             @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+  items       TransactionItem[]
+
+  @@index([tenant_id])
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  transaction_id String
+  product_id     String
+  quantity       Int
+  price          Float
+  subtotal       Float
+
+  transaction    Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+  product        Product     @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@index([tenant_id])
+  @@map("transaction_items")
+}
+
+model StockTransfer {
+  id             String              @id @default(uuid())
+  tenant_id      String
+  from_branch_id String
+  to_branch_id   String
+  product_id     String
+  quantity       Int
+  status         String              @default("PENDING")
+  notes          String?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  from_branch    Branch              @relation("FromBranch", fields: [from_branch_id], references: [id], onDelete: Cascade)
+  to_branch      Branch              @relation("ToBranch", fields: [to_branch_id], references: [id], onDelete: Cascade)
+  product        Product             @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("stock_transfers")
+}
+
+model Employee {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  position   String
+  salary     Float
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  attendances Attendance[]
+
+  @@index([tenant_id])
+  @@map("employees")
+}
+
+model Attendance {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  employee_id String
+  check_in    DateTime  @default(now())
+  check_out   DateTime?
+
+  employee    Employee  @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("attendances")
+}
+
+model Voucher {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  code            String
+  discount_amount Float
+  is_used         Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@map("vouchers")
+}
+
+model Shift {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  branch_id   String
+  user_id     String
+  start_time  DateTime  @default(now())
+  end_time    DateTime?
+  start_cash  Float
+  end_cash    Float?
+  actual_cash Float?
+  difference  Float?
+  created_at  DateTime  @default(now())
+
+  tenant      Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  branch      Branch    @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  txs         Transaction[]
+
+  @@index([tenant_id])
+  @@map("shifts")
+}
+
+model Journal {
+  id          String      @id @default(uuid())
+  tenant_id   String
+  type        String
+  reference   String
+  description String
+  amount      Float
+  created_at  DateTime    @default(now())
+
+  tenant      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("journals")
+}
+
+model AuditEvent {
+  id         String      @id @default(uuid())
+  tenant_id  String
+  user_id    String?
+  action     String
+  entity     String
+  entity_id  String?
+  payload    Json?
+  ip_address String?
+  created_at DateTime    @default(now())
+
+  tenant     Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@map("audit_events")
+}

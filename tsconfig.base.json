@@ -10,11 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "baseUrl": ".",
-    "paths": {
-      "@pos/types": ["packages/types/src/index.ts"],
-      "@pos/utils": ["packages/utils/src/index.ts"]
-    }
+    "emitDecoratorMetadata": true
   }
 }
